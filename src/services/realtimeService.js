@@ -14,6 +14,8 @@ class RealtimeAuctionService {
     this.broadcastChannel = null;
     this.reconnectTimer = null;
     this.isSyncingToDb = false;
+    this.broadcastSupabaseChannel = null;
+    this.dbSupabaseChannel = null;
 
     // 1. Same-device 0ms multi-tab synchronization via BroadcastChannel
     if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
@@ -83,68 +85,67 @@ class RealtimeAuctionService {
   }
 
   /**
-   * Initialize Supabase Realtime Channel
-   * Listens to:
-   * - Ultra-low-latency broadcast events ('AUCTION_STATE_UPDATE')
-   * - Postgres replication changes on 'auction_state' table
+   * Initialize Supabase Realtime Channels
+   * Channel 1: 'mpl_auction_live' - Pure broadcast channel (never fails due to table missing/RLS)
+   * Channel 2: 'mpl_auction_db' - Postgres changes channel (listens to database row updates)
    */
   initSupabaseRealtime() {
-    if (this.channel) {
-      try {
-        supabase.removeChannel(this.channel);
-      } catch (err) {
-        // ignore
-      }
-    }
-
     this.setStatus('RECONNECTING');
 
-    this.channel = supabase.channel('mpl_auction_live', {
+    // Clean up old channels if any
+    if (this.broadcastSupabaseChannel) {
+      try { supabase.removeChannel(this.broadcastSupabaseChannel); } catch (e) {}
+    }
+    if (this.dbSupabaseChannel) {
+      try { supabase.removeChannel(this.dbSupabaseChannel); } catch (e) {}
+    }
+
+    // 1. PURE BROADCAST CHANNEL (Sub-50ms ultra-low latency Admin -> Mobile)
+    this.broadcastSupabaseChannel = supabase.channel('mpl_auction_live', {
       config: {
-        broadcast: { self: false, ack: false },
-        presence: { key: 'auction_viewer' }
+        broadcast: { self: false, ack: false }
       }
     });
 
-    // 1. Instantaneous Broadcast Listener (Admin -> All Viewers in < 50ms)
-    this.channel.on('broadcast', { event: 'AUCTION_STATE_UPDATE' }, (payload) => {
+    this.broadcastSupabaseChannel.on('broadcast', { event: 'AUCTION_STATE_UPDATE' }, (payload) => {
       if (payload?.payload) {
         this.notifyStateListeners(payload.payload, 'supabase_broadcast');
       }
     });
 
-    // 2. Postgres Replication Listener (Database row changes)
-    this.channel.on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'auction_state' },
-      (payload) => {
-        if (payload?.new?.full_snapshot) {
-          this.notifyStateListeners(payload.new.full_snapshot, 'supabase_postgres');
-        }
-      }
-    );
-
-    // 3. Subscribe with status lifecycle management
-    this.channel.subscribe((status) => {
+    this.broadcastSupabaseChannel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
-        console.log('🟢 Supabase Realtime connected and subscribed to mpl_auction_live');
+        console.log('🟢 Supabase Realtime broadcast channel connected: SUBSCRIBED');
         this.setStatus('CONNECTED');
         this.fetchLatestState();
       } else if (status === 'TIMED_OUT' || status === 'CHANNEL_ERROR') {
-        console.warn('⚠️ Supabase Realtime connection issue:', status);
+        console.warn('⚠️ Supabase Broadcast channel notice:', status);
         this.setStatus('RECONNECTING');
-        this.scheduleReconnect();
       } else if (status === 'CLOSED') {
         this.setStatus('DISCONNECTED');
       }
     });
-  }
 
-  scheduleReconnect() {
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
-    this.reconnectTimer = setTimeout(() => {
-      this.initSupabaseRealtime();
-    }, 4000);
+    // 2. DATABASE REPLICATION CHANNEL (Postgres row updates)
+    try {
+      this.dbSupabaseChannel = supabase.channel('mpl_auction_db');
+      this.dbSupabaseChannel.on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'auction_state' },
+        (payload) => {
+          if (payload?.new?.full_snapshot) {
+            this.notifyStateListeners(payload.new.full_snapshot, 'supabase_postgres');
+          }
+        }
+      );
+      this.dbSupabaseChannel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('🟢 Supabase Postgres changes channel connected: SUBSCRIBED');
+        }
+      });
+    } catch (err) {
+      console.warn('Notice setting up Postgres changes channel:', err);
+    }
   }
 
   /**
@@ -159,8 +160,6 @@ class RealtimeAuctionService {
         .maybeSingle();
 
       if (error) {
-        // If table does not exist or network issue, log warning non-fatally
-        console.warn('Supabase state query notice:', error.message);
         return null;
       }
 
@@ -169,7 +168,7 @@ class RealtimeAuctionService {
         return data.full_snapshot;
       }
     } catch (err) {
-      console.warn('Failed to fetch latest state from Supabase:', err);
+      // Graceful fallback
     }
     return null;
   }
@@ -190,16 +189,18 @@ class RealtimeAuctionService {
       }
     }
 
-    // 2. Cloud Realtime Broadcast (Sub-50ms to every connected device globally)
-    if (this.channel && this.status === 'CONNECTED') {
+    // 2. Cloud Realtime Broadcast (Admin -> All Connected Devices globally)
+    if (this.broadcastSupabaseChannel) {
       try {
-        this.channel.send({
+        this.broadcastSupabaseChannel.send({
           type: 'broadcast',
           event: 'AUCTION_STATE_UPDATE',
           payload: state
+        }).catch((err) => {
+          console.warn('Supabase broadcast send notice:', err);
         });
       } catch (err) {
-        console.warn('Supabase broadcast send warning:', err);
+        console.warn('Supabase broadcast send error:', err);
       }
     }
 
