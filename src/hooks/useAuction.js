@@ -616,6 +616,14 @@ export function useAuction() {
         console.error('Confetti animation error:', e);
       }
 
+      // Log sale to Supabase history table
+      realtimeService.logSaleToHistory(
+        { id: playerId, number: playerNumber, name: assignment.name, role: assignment.role },
+        targetTeam,
+        priceNum,
+        stage === 'UNSOLD_ROUND' ? 'UNSOLD_ROUND' : 'MAIN_AUCTION'
+      );
+
       setShowAddPlayerModal(false);
       setAddPlayerModalData(null);
       setSelectedPlayer(null);
@@ -723,6 +731,9 @@ export function useAuction() {
       auctionHistory: [],
       currentPlayerData: null
     });
+
+    // Reset Supabase Database tables
+    realtimeService.resetRemoteState();
   }, [isAdmin]);
 
   return {
