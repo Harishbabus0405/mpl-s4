@@ -1,7 +1,7 @@
 -- ============================================================
 -- MPL S4 CRICKET TOURNAMENT - SUPABASE DATABASE SCHEMA
 -- Execute this script in your Supabase project's SQL Editor:
--- Project: https://fwcvbxeyqwvt0jqrhewq.supabase.co
+-- Project: https://fwcvbxeyqwvtojqrhewq.supabase.co
 -- ============================================================
 
 -- 1. TEAMS TABLE
