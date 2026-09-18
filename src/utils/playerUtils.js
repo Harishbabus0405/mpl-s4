@@ -26,7 +26,7 @@ export const CATEGORY_CONFIG = {
   },
   Batsman: {
     id: 'Batsman',
-    displayName: 'BATSMEN',
+    displayName: 'BATSMAN',
     singularName: 'BATSMAN',
     emoji: '🏏',
     color: 'gold',
@@ -132,9 +132,15 @@ export function getPlayersByCategory() {
 
 /**
  * Look up player by entered string number in specific category ONLY
- * Returns: { success: true, player: obj } OR { success: false, reason: string, code: string }
+ * Returns: { success: true, player: obj } OR { success: false, message: string, code: string }
  */
-export function findPlayerByNumber(category, enteredInput, usedPlayersSet = new Set()) {
+export function findPlayerByNumber(
+  category,
+  enteredInput,
+  playerStatuses = {},
+  unsoldRoundProcessed = new Set(),
+  stage = 'MAIN_AUCTION'
+) {
   const inputStr = String(enteredInput || '').trim();
 
   if (!inputStr) {
@@ -177,14 +183,42 @@ export function findPlayerByNumber(category, enteredInput, usedPlayersSet = new 
     };
   }
 
-  // Check if player already shown
-  if (usedPlayersSet.has(matchedPlayer.id)) {
-    return {
-      success: false,
-      code: 'ALREADY_SHOWN',
-      player: matchedPlayer,
-      message: `PLAYER #${matchedPlayer.number} ALREADY SHOWN`
-    };
+  const currentStatus = playerStatuses[matchedPlayer.id];
+
+  if (stage === 'MAIN_AUCTION') {
+    if (currentStatus) {
+      return {
+        success: false,
+        code: 'ALREADY_PROCESSED',
+        player: matchedPlayer,
+        message: `PLAYER #${matchedPlayer.number} ALREADY PROCESSED (${currentStatus})`
+      };
+    }
+  } else if (stage === 'UNSOLD_ROUND') {
+    if (currentStatus === 'SOLD') {
+      return {
+        success: false,
+        code: 'ALREADY_SOLD',
+        player: matchedPlayer,
+        message: `PLAYER #${matchedPlayer.number} IS ALREADY SOLD`
+      };
+    }
+    if (currentStatus !== 'UNSOLD') {
+      return {
+        success: false,
+        code: 'NOT_UNSOLD',
+        player: matchedPlayer,
+        message: `PLAYER #${matchedPlayer.number} IS NOT IN UNSOLD LIST`
+      };
+    }
+    if (unsoldRoundProcessed.has(matchedPlayer.id)) {
+      return {
+        success: false,
+        code: 'ALREADY_PROCESSED_UNSOLD',
+        player: matchedPlayer,
+        message: `PLAYER #${matchedPlayer.number} ALREADY PROCESSED IN UNSOLD ROUND`
+      };
+    }
   }
 
   return {
@@ -192,3 +226,4 @@ export function findPlayerByNumber(category, enteredInput, usedPlayersSet = new 
     player: matchedPlayer
   };
 }
+

@@ -31,3 +31,4 @@ dist-ssr
 .env
 .env.*
 !.env.example
+.auction_shared_state.json

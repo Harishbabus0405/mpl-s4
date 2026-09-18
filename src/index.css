@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -54,4 +56,115 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: #374151;
+}
+
+/* Hide scrollbar for category tabs */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Glow effects for sold animation */
+@keyframes soldGlow {
+  0%, 100% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+  50% { box-shadow: 0 0 50px rgba(16, 185, 129, 0.7); }
+}
+
+.animate-sold-glow {
+  animation: soldGlow 2s ease-in-out infinite;
+}
+
+/* Subtle slide up animation */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out forwards;
+}
+
+/* Red glow for unsold */
+@keyframes unsoldPulse {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+
+.animate-unsold-pulse {
+  animation: unsoldPulse 1.5s ease-in-out infinite;
+}
+
+/* Stadium Spotlight Sweep */
+@keyframes spotlightSweep {
+  0% {
+    transform: rotate(-15deg) translateY(-5%);
+    opacity: 0.4;
+  }
+  50% {
+    transform: rotate(15deg) translateY(5%);
+    opacity: 0.7;
+  }
+  100% {
+    transform: rotate(-15deg) translateY(-5%);
+    opacity: 0.4;
+  }
+}
+
+.animate-spotlight {
+  animation: spotlightSweep 12s ease-in-out infinite;
+}
+
+/* Stadium Atmosphere Background */
+.stadium-bg {
+  background: 
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(245, 158, 11, 0.12), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 20% 80%, rgba(16, 185, 129, 0.08), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(6, 182, 212, 0.08), transparent 60%),
+    #040711;
+}
+
+/* Hero Player Card Spotlight Frame */
+.hero-card-frame {
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.15) 0%, rgba(17, 24, 39, 0.85) 40%, rgba(10, 15, 29, 0.95) 100%);
+  border: 2px solid rgba(245, 158, 11, 0.35);
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.9), 0 0 30px rgba(245, 158, 11, 0.15);
+}
+
+.hero-card-frame:hover {
+  border-color: rgba(245, 158, 11, 0.55);
+  box-shadow: 0 0 70px rgba(0, 0, 0, 0.95), 0 0 45px rgba(245, 158, 11, 0.25);
+}
+
+/* Mobile Safe Area & Viewport Protection */
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+}
+
+.pb-safe {
+  padding-bottom: max(16px, env(safe-area-inset-bottom, 16px));
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Shake animation for errors */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-5px); }
+  40%, 80% { transform: translateX(5px); }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
 }
