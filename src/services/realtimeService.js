@@ -46,6 +46,14 @@ class RealtimeAuctionService {
         console.warn('🔴 Network offline');
         this.setStatus('DISCONNECTED');
       });
+
+      if (typeof document !== 'undefined') {
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            this.fetchLatestState();
+          }
+        });
+      }
     }
   }
 
